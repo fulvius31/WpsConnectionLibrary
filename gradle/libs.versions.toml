@@ -1,0 +1,15 @@
+[versions]
+agp = "9.0.0"
+core = "6.0.0"
+junit = "4.13.2"
+junitVersion = "1.3.0"
+espressoCore = "3.7.0"
+
+[libraries]
+core = { module = "com.github.topjohnwu.libsu:core", version.ref = "core" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }

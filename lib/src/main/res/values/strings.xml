@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wps_lib_connecting">Connecting</string>
+    <string name="wps_lib_failed_to_connect">Failed to connect to</string>
+    <string name="wps_lib_timeout">WPS Timeout</string>
+</resources>
