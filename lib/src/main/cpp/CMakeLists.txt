@@ -145,7 +145,7 @@ ExternalProject_Add(libnl_external
         "${LIBNL_INSTALL_DIR}/lib/libnl-genl-3.a"
         "${LIBNL_INSTALL_DIR}/lib/libnl-route-3.a"
     LOG_CONFIGURE OFF
-    LOG_BUILD ON
+    LOG_BUILD OFF
     LOG_INSTALL ON
 )
 
