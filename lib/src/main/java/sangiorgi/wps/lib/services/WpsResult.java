@@ -115,14 +115,21 @@ public class WpsResult {
    * @return true if first 4 digits are correct (M6 failure or later)
    */
   public boolean isFirstHalfCorrect() {
+    // Scan all results before concluding — an M6 in any position wins over an earlier M4,
+    // which matters when WpsResult aggregates multiple CommandResults (e.g. Pixie Dust).
     for (CommandResult result : commandResults) {
       String output = result.getOutputAsString().toLowerCase(Locale.ROOT);
-      // M6 failure indicates first half was correct
-      if (output.contains("m6") || output.contains("wsc_nack after m6")) {
+      // M6 failure (msg=10) indicates first half was correct, second half wrong
+      if (output.contains("m6") || output.contains("wsc_nack after m6")
+          || output.contains("msg=10")) {
         return true;
       }
-      // M4 failure indicates first half was wrong
-      if (output.contains("m4") || output.contains("wsc_nack after m4")) {
+    }
+    for (CommandResult result : commandResults) {
+      String output = result.getOutputAsString().toLowerCase(Locale.ROOT);
+      // M4 failure (msg=8) indicates first half was wrong
+      if (output.contains("m4") || output.contains("wsc_nack after m4")
+          || output.contains("msg=8")) {
         return false;
       }
     }
