@@ -122,7 +122,6 @@ ExternalProject_Add(libnl_external
     INSTALL_DIR "${LIBNL_INSTALL_DIR}"
     CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env
-            "PATH=${DUMMY_TOOLS_DIR}:${NDK_TOOLCHAIN}/bin:$ENV{PATH}"
             "CC=${NDK_TOOLCHAIN}/bin/${COMPILER_PREFIX}${ANDROID_API_LEVEL}-clang"
             "AR=${NDK_TOOLCHAIN}/bin/llvm-ar"
             "RANLIB=${NDK_TOOLCHAIN}/bin/llvm-ranlib"
@@ -135,6 +134,8 @@ ExternalProject_Add(libnl_external
             --enable-static
             --disable-cli
             --disable-pthreads
+            "LEX=${DUMMY_TOOLS_DIR}/flex"
+            "YACC=${DUMMY_TOOLS_DIR}/bison"
     BUILD_COMMAND make -j4
     INSTALL_COMMAND make install
     BUILD_IN_SOURCE 1
