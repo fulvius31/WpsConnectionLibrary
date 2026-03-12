@@ -87,8 +87,9 @@ public class WpsNative {
         }
 
         if (libraryLoaded) {
-            // Use nativeLibDir for pixiewps (no root needed, proper SELinux context)
-            nativeInit(nativeLibDir, context.getFilesDir().getAbsolutePath());
+            // Use SU_EXEC_DIR for pixiewps - nativeLibDir is mounted noexec on modern Android.
+            // Pixiewps is deployed to SU_EXEC_DIR by deployExecutables() before computePixiePin() is called.
+            nativeInit(SU_EXEC_DIR, context.getFilesDir().getAbsolutePath());
         }
     }
 
