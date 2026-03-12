@@ -120,6 +120,11 @@ ExternalProject_Add(libnl_external
     URL "https://github.com/thom311/libnl/releases/download/libnl3_2_25/libnl-${LIBNL_VERSION}.tar.gz"
     SOURCE_DIR "${LIBNL_SOURCE_DIR}"
     INSTALL_DIR "${LIBNL_INSTALL_DIR}"
+    PATCH_COMMAND
+        touch ${LIBNL_SOURCE_DIR}/lib/route/pktloc_grammar.c
+              ${LIBNL_SOURCE_DIR}/lib/route/pktloc_syntax.c
+              ${LIBNL_SOURCE_DIR}/lib/route/cls/ematch_grammar.c
+              ${LIBNL_SOURCE_DIR}/lib/route/cls/ematch_syntax.c
     CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env
             "CC=${NDK_TOOLCHAIN}/bin/${COMPILER_PREFIX}${ANDROID_API_LEVEL}-clang"
