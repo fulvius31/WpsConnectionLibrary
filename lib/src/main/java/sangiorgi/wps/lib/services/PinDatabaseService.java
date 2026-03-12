@@ -8,6 +8,7 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import sangiorgi.wps.lib.assets.WpaToolsPaths;
 
 public class PinDatabaseService {
@@ -92,10 +93,10 @@ public class PinDatabaseService {
    * "AA:BB:CC:DD:EE:FF" -> "aabbcc"
    */
   static String normalizeMacPrefix(String bssid) {
-    String normalized = bssid.toUpperCase().replace(":", "").replace("-", "");
+    String normalized = bssid.toUpperCase(Locale.ROOT).replace(":", "").replace("-", "");
     if (normalized.length() < 6) {
       return null;
     }
-    return normalized.substring(0, 6).toLowerCase();
+    return normalized.substring(0, 6).toLowerCase(Locale.ROOT);
   }
 }

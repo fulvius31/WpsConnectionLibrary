@@ -57,14 +57,14 @@ public class ConnectionService {
   }
 
   /** Start standard WPS connection */
-  public CompletableFuture<Void> startConnection(boolean useOldMethod) {
+  public CompletableFuture<Void> startConnection() {
     return CompletableFuture.runAsync(
         () -> {
           stopActiveHandler();
           stateManager.setCancelled(false);
 
           activeHandler =
-              connectionHandlerFactory.create(networkToTest, callback, stateManager, useOldMethod);
+              connectionHandlerFactory.create(networkToTest, callback, stateManager);
           activeHandler.start();
         });
   }
