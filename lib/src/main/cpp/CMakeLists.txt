@@ -127,6 +127,7 @@ ExternalProject_Add(libnl_external
             "RANLIB=${NDK_TOOLCHAIN}/bin/llvm-ranlib"
             "STRIP=${NDK_TOOLCHAIN}/bin/llvm-strip"
             "CFLAGS=-fPIC -D__ANDROID_API__=${ANDROID_API_LEVEL}"
+            "PATH=${DUMMY_TOOLS_DIR}:$ENV{PATH}"
         ${LIBNL_SOURCE_DIR}/configure
             --host=${CONFIGURE_HOST}
             --prefix=${LIBNL_INSTALL_DIR}
