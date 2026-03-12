@@ -207,7 +207,9 @@ void supplicant_read_wps_result(wps_session_t *session, wps_result_t *result, in
     while (1) {
         long long remaining = deadline - now_ms();
         if (remaining <= 0) {
-            result->status = WPS_STATUS_TIMEOUT;
+            if (result->status != WPS_STATUS_SUCCESS) {
+                result->status = WPS_STATUS_TIMEOUT;
+            }
             return;
         }
 
@@ -215,11 +217,17 @@ void supplicant_read_wps_result(wps_session_t *session, wps_result_t *result, in
                                     (int)(remaining > INT_MAX ? INT_MAX : remaining));
 
         if (len < 0) {
-            result->status = WPS_STATUS_ERROR;
+            // If we already detected WPS-SUCCESS, don't overwrite with ERROR
+            if (result->status != WPS_STATUS_SUCCESS) {
+                result->status = WPS_STATUS_ERROR;
+            }
             return;
         }
         if (len == 0) {
-            result->status = WPS_STATUS_TIMEOUT;
+            // If we already detected WPS-SUCCESS, don't overwrite with TIMEOUT
+            if (result->status != WPS_STATUS_SUCCESS) {
+                result->status = WPS_STATUS_TIMEOUT;
+            }
             return;
         }
 
@@ -242,8 +250,19 @@ void supplicant_read_wps_result(wps_session_t *session, wps_result_t *result, in
             return;
         }
 
-        // Check for WPS message results
-        if (strstr(line, "msg=") && strstr(line, "config_error")) {
+        // Check for WPS-SUCCESS event (MSG_INFO level, always output)
+        if (strstr(line, "WPS-SUCCESS")) {
+            // Success without password - keep reading briefly for Network Key
+            // that may follow, but mark success now as fallback
+            result->status = WPS_STATUS_SUCCESS;
+            LOGI("WPS-SUCCESS event detected (password may follow)");
+            // Continue reading to find Network Key if available
+            continue;
+        }
+
+        // Check for WPS-FAIL message results (only match actual WPS-FAIL events,
+        // not debug lines that might contain msg=/config_error substrings)
+        if (strstr(line, "WPS-FAIL") && strstr(line, "msg=") && strstr(line, "config_error")) {
             if (strstr(line, "config_error=15")) {
                 result->status = WPS_STATUS_LOCKED;
                 return;
@@ -258,10 +277,6 @@ void supplicant_read_wps_result(wps_session_t *session, wps_result_t *result, in
             }
             if (strstr(line, "msg=10")) {
                 result->status = WPS_STATUS_THREE_FAIL;
-                return;
-            }
-            if (strstr(line, "msg=11") && strstr(line, "config_error=0")) {
-                result->status = WPS_STATUS_SUCCESS;
                 return;
             }
         }

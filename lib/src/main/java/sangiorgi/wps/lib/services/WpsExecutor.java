@@ -105,7 +105,11 @@ public class WpsExecutor implements AutoCloseable {
     String confPath = WpsConfig.ensureConfigFile(context);
     String ctrlDir = WpsNative.getCtrlDir();
 
-    long handle = wpsNative.startWpaSupplicant("wlan0", confPath, ctrlDir, false);
+    // Debug mode (-d) is required: the Network Key hexdump is at MSG_DEBUG level.
+    // Without -d, wpa_supplicant only outputs MSG_INFO+, so the password is never
+    // printed to stdout and cannot be extracted. -K (already set) then ensures the
+    // key material is shown instead of [REMOVED].
+    long handle = wpsNative.startWpaSupplicant("wlan0", confPath, ctrlDir, true);
     if (handle == 0) {
       return createErrorResult(bssid, pin, "Failed to start wpa_supplicant");
     }
