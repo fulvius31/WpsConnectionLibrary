@@ -48,9 +48,8 @@ public class WpsConnectionManager {
    * Create a new WpsConnectionManager.
    *
    * @param context Application context
-   * @param libConfig Library configuration with data directory
    */
-  public WpsConnectionManager(Context context, WpsLibConfig libConfig) {
+  public WpsConnectionManager(Context context) {
     this.context = context.getApplicationContext();
     this.executor = new WpsExecutor(this.context);
 

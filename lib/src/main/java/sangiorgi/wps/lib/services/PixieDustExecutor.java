@@ -39,6 +39,10 @@ public class PixieDustExecutor {
           }
 
           String confPath = WpsConfig.ensureConfigFile(context);
+          if (confPath == null) {
+            return new PixieDustResult(false, bssid, null, null,
+                "Failed to create wpa_supplicant config file");
+          }
           String ctrlDir = WpsNative.getCtrlDir();
 
           // Start wpa_supplicant in debug mode for parameter extraction

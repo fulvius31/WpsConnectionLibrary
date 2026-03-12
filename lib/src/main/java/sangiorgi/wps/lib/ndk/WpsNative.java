@@ -228,8 +228,14 @@ public class WpsNative {
 
         // === 0. Disable WiFi to cleanly stop the system wpa_supplicant ===
         Log.i(TAG, "Disabling WiFi to stop system wpa_supplicant...");
-        wifiManager.setWifiEnabled(false);
-        SystemClock.sleep(1000);
+        try {
+            if (wifiManager != null) {
+                wifiManager.setWifiEnabled(false);
+                SystemClock.sleep(1000);
+            }
+        } catch (SecurityException e) {
+            Log.w(TAG, "Cannot disable WiFi (permission denied): " + e.getMessage());
+        }
 
         try {
             // === 1. Start wpa_supplicant su shell (foreground, captures stdout) ===
@@ -311,14 +317,18 @@ public class WpsNative {
             this.sessionIface = iface;
 
             long handle = nativeCreateSession(readFd, ctrlDir, iface);
+            // Native dup()s the fd, so close the Java-side original to avoid leak
+            ParcelFileDescriptor.adoptFd(readFd).close();
             if (handle == 0) {
                 cleanupAll();
+                restoreWifi();
             }
             return handle;
 
         } catch (Exception e) {
             Log.e(TAG, "startWpaSupplicant failed", e);
             cleanupAll();
+            restoreWifi();
             return 0;
         }
     }
@@ -348,9 +358,18 @@ public class WpsNative {
                 "start wpa_supplicant 2>/dev/null"
         ).exec();
 
-        // Re-enable WiFi (restarts system wpa_supplicant through the framework)
-        Log.i(TAG, "stopWpaSupplicant: re-enabling WiFi");
-        wifiManager.setWifiEnabled(true);
+        restoreWifi();
+    }
+
+    private void restoreWifi() {
+        Log.i(TAG, "Restoring WiFi...");
+        try {
+            if (wifiManager != null) {
+                wifiManager.setWifiEnabled(true);
+            }
+        } catch (SecurityException e) {
+            Log.w(TAG, "Cannot re-enable WiFi (permission denied): " + e.getMessage());
+        }
     }
 
     private void cleanupAll() {
@@ -385,9 +404,23 @@ public class WpsNative {
      * Send WPS_REG command via wpa_cli in the cli su shell.
      * Both su shells run as root and can access the control socket.
      */
+    private static final String BSSID_PATTERN = "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$";
+    // PIN can be numeric (4-8 digits), alphanumeric, or empty — reject shell metacharacters
+    private static final String SAFE_PIN_PATTERN = "^[0-9A-Za-z]*$";
+
     public String wpsReg(String bssid, String pin) {
         if (suStdin == null) {
             Log.e(TAG, "wpsReg: su shell not running");
+            return null;
+        }
+
+        // Validate inputs before interpolating into a root shell command
+        if (bssid == null || !bssid.matches(BSSID_PATTERN)) {
+            Log.e(TAG, "wpsReg: invalid BSSID: " + bssid);
+            return null;
+        }
+        if (pin == null || !pin.matches(SAFE_PIN_PATTERN)) {
+            Log.e(TAG, "wpsReg: invalid PIN: " + pin);
             return null;
         }
 

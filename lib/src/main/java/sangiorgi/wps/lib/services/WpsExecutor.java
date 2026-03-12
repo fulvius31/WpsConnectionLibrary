@@ -103,6 +103,9 @@ public class WpsExecutor implements AutoCloseable {
 
   private WpsResult executeNativeWps(String bssid, String pin) {
     String confPath = WpsConfig.ensureConfigFile(context);
+    if (confPath == null) {
+      return createErrorResult(bssid, pin, "Failed to create wpa_supplicant config file");
+    }
     String ctrlDir = WpsNative.getCtrlDir();
 
     // Debug mode (-d) is required: the Network Key hexdump is at MSG_DEBUG level.
@@ -159,7 +162,7 @@ public class WpsExecutor implements AutoCloseable {
         output.add("WPS-FAIL msg=8 config_error=18");
         break;
       case THREE_FAIL:
-        output.add("WPS-FAIL msg=8");
+        output.add("WPS-FAIL msg=10 config_error=18");
         break;
       case LOCKED:
         output.add("WPS-FAIL config_error=15");
