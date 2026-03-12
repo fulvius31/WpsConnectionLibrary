@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <errno.h>
 #include <android/log.h>
 
 #define LOG_TAG "PixiewpsWrapper"
@@ -107,7 +108,11 @@ int pixiewps_compute(const char *pke, const char *pkr,
 
     // Wait for child
     int status;
-    waitpid(pid, &status, 0);
+    if (waitpid(pid, &status, 0) < 0) {
+        LOGE("pixiewps_compute: waitpid failed: %s", strerror(errno));
+        pin_out[0] = '\0';
+        return -1;
+    }
 
     if (WIFSIGNALED(status)) {
         LOGE("pixiewps_compute: killed by signal %d, path=%s", WTERMSIG(status), pixiewps_exec_path);

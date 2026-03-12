@@ -123,8 +123,10 @@ public class WpsExecutor implements AutoCloseable {
 
       // Send WPS_REG command
       String regResponse = wpsNative.wpsReg(bssid, pin);
-      if (regResponse == null) {
-        return createErrorResult(bssid, pin, "WPS_REG command failed (invalid input or shell not running)");
+      String trimmed = regResponse != null ? regResponse.trim() : null;
+      if (trimmed == null || trimmed.isEmpty() || "FAIL".equalsIgnoreCase(trimmed)) {
+        return createErrorResult(bssid, pin,
+            "WPS_REG command failed (response: " + regResponse + ")");
       }
 
       // Read WPS result with timeout
