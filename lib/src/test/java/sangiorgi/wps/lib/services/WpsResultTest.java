@@ -213,6 +213,121 @@ public class WpsResultTest {
     assertFalse(result.isFirstHalfCorrect());
   }
 
+  // ============ Native Status Mapping (convertNativeResult output) ============
+  // These tests verify that WpsResult correctly interprets the synthetic output
+  // produced by WpsExecutor.convertNativeResult() for each native status code.
+
+  @Test
+  public void testNativeSuccessWithPassword() {
+    // Simulates convertNativeResult for ndk.WpsResult.Status.SUCCESS with networkKey
+    CommandResult cmdResult = new CommandResult(
+        true,
+        Arrays.asList("WPS-SUCCESS", "Network Key: MyPassword123"),
+        null, WpsCommand.CommandType.WPA_SUPPLICANT);
+    WpsResult result = new WpsResult(TEST_BSSID, TEST_PIN, Collections.singletonList(cmdResult));
+    result.setPassword("MyPassword123");
+
+    assertTrue(result.isSuccess());
+    assertEquals("MyPassword123", result.getPassword());
+    assertFalse(result.isTimeout());
+    assertFalse(result.isLocked());
+  }
+
+  @Test
+  public void testNativeSuccessWithoutPassword() {
+    // Simulates convertNativeResult for SUCCESS when networkKey is null
+    CommandResult cmdResult = new CommandResult(
+        true,
+        Arrays.asList("WPS-SUCCESS"),
+        null, WpsCommand.CommandType.WPA_SUPPLICANT);
+    WpsResult result = new WpsResult(TEST_BSSID, TEST_PIN, Collections.singletonList(cmdResult));
+
+    assertTrue(result.isSuccess());
+    assertNull(result.getPassword());
+  }
+
+  @Test
+  public void testNativeFourFailIsWrongPin() {
+    // Simulates convertNativeResult for FOUR_FAIL (msg=8 = M4 failure)
+    CommandResult cmdResult = new CommandResult(
+        false,
+        Arrays.asList("WPS-FAIL msg=8 config_error=18"),
+        null, WpsCommand.CommandType.WPA_SUPPLICANT);
+    WpsResult result = new WpsResult(TEST_BSSID, TEST_PIN, Collections.singletonList(cmdResult));
+
+    assertFalse(result.isSuccess());
+    assertTrue("FOUR_FAIL should be detected as wrong PIN", result.isWrongPin());
+    assertTrue("FOUR_FAIL should be detected as PIN rejected", result.isPinRejected());
+    assertFalse("FOUR_FAIL first half should NOT be correct", result.isFirstHalfCorrect());
+  }
+
+  @Test
+  public void testNativeThreeFailIsFirstHalfCorrect() {
+    // Simulates convertNativeResult for THREE_FAIL (msg=10 = M6 failure)
+    CommandResult cmdResult = new CommandResult(
+        false,
+        Arrays.asList("WPS-FAIL msg=10 config_error=18"),
+        null, WpsCommand.CommandType.WPA_SUPPLICANT);
+    WpsResult result = new WpsResult(TEST_BSSID, TEST_PIN, Collections.singletonList(cmdResult));
+
+    assertFalse(result.isSuccess());
+    assertTrue("THREE_FAIL should be detected as PIN rejected", result.isPinRejected());
+    assertTrue("THREE_FAIL first half should be correct", result.isFirstHalfCorrect());
+  }
+
+  @Test
+  public void testNativeLockedStatus() {
+    // Simulates convertNativeResult for LOCKED
+    CommandResult cmdResult = new CommandResult(
+        false,
+        Arrays.asList("WPS-FAIL config_error=15", "setup locked"),
+        null, WpsCommand.CommandType.WPA_SUPPLICANT);
+    WpsResult result = new WpsResult(TEST_BSSID, TEST_PIN, Collections.singletonList(cmdResult));
+
+    assertFalse(result.isSuccess());
+    assertTrue("LOCKED should be detected", result.isLocked());
+    assertEquals("WPS is locked on this router", result.getFailureReason());
+  }
+
+  @Test
+  public void testNativeTimeoutStatus() {
+    // Simulates convertNativeResult for TIMEOUT
+    CommandResult cmdResult = new CommandResult(
+        false,
+        Arrays.asList("WPS-TIMEOUT"),
+        null, WpsCommand.CommandType.WPA_SUPPLICANT);
+    WpsResult result = new WpsResult(TEST_BSSID, TEST_PIN, Collections.singletonList(cmdResult));
+
+    assertFalse(result.isSuccess());
+    assertTrue("TIMEOUT should be detected", result.isTimeout());
+  }
+
+  @Test
+  public void testNativeSelinuxStatus() {
+    // Simulates convertNativeResult for SELINUX
+    CommandResult cmdResult = new CommandResult(
+        false,
+        Arrays.asList("SELinux denied"),
+        null, WpsCommand.CommandType.WPA_SUPPLICANT);
+    WpsResult result = new WpsResult(TEST_BSSID, TEST_PIN, Collections.singletonList(cmdResult));
+
+    assertFalse(result.isSuccess());
+    assertFalse(result.isTimeout());
+  }
+
+  @Test
+  public void testNativeDefaultFailStatus() {
+    // Simulates convertNativeResult for ERROR/CRC_FAIL/unknown
+    CommandResult cmdResult = new CommandResult(
+        false,
+        Arrays.asList("WPS-FAIL"),
+        null, WpsCommand.CommandType.WPA_SUPPLICANT);
+    WpsResult result = new WpsResult(TEST_BSSID, TEST_PIN, Collections.singletonList(cmdResult));
+
+    assertFalse(result.isSuccess());
+    assertTrue("Generic WPS-FAIL should be detected as PIN rejected", result.isPinRejected());
+  }
+
   // ============ Wrong PIN ============
 
   @Test

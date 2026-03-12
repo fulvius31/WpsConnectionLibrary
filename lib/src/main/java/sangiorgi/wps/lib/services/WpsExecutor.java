@@ -122,7 +122,10 @@ public class WpsExecutor implements AutoCloseable {
       SystemClock.sleep(2000);
 
       // Send WPS_REG command
-      wpsNative.wpsReg(bssid, pin);
+      String regResponse = wpsNative.wpsReg(bssid, pin);
+      if (regResponse == null) {
+        return createErrorResult(bssid, pin, "WPS_REG command failed (invalid input or shell not running)");
+      }
 
       // Read WPS result with timeout
       sangiorgi.wps.lib.ndk.WpsResult nativeResult =

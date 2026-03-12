@@ -109,13 +109,20 @@ int pixiewps_compute(const char *pke, const char *pkr,
     int status;
     waitpid(pid, &status, 0);
 
+    if (WIFSIGNALED(status)) {
+        LOGE("pixiewps_compute: killed by signal %d, path=%s", WTERMSIG(status), pixiewps_exec_path);
+        pin_out[0] = '\0';
+        return -1;
+    }
+
     if (WIFEXITED(status) && WEXITSTATUS(status) == 127) {
         LOGE("pixiewps_compute: execl failed (exit 127), path=%s", pixiewps_exec_path);
         pin_out[0] = '\0';
         return -1;
     }
 
-    LOGI("pixiewps_compute: exit=%d, output len=%d", WEXITSTATUS(status), total);
+    LOGI("pixiewps_compute: exit=%d, output len=%d",
+         WIFEXITED(status) ? WEXITSTATUS(status) : -1, total);
 
     // Parse output for "WPS pin:" line
     char *pin_line = strstr(buf, "WPS pin:");
