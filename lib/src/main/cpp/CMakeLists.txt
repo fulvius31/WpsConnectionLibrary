@@ -123,11 +123,13 @@ ExternalProject_Add(libnl_external
     PATCH_COMMAND
         ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_SOURCE_DIR}/libnl-generated/route/pktloc_grammar.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/libnl-generated/route/pktloc_grammar.h
             ${CMAKE_CURRENT_SOURCE_DIR}/libnl-generated/route/pktloc_syntax.c
             ${CMAKE_CURRENT_SOURCE_DIR}/libnl-generated/route/pktloc_syntax.h
             ${LIBNL_SOURCE_DIR}/lib/route/
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_SOURCE_DIR}/libnl-generated/route/cls/ematch_grammar.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/libnl-generated/route/cls/ematch_grammar.h
             ${CMAKE_CURRENT_SOURCE_DIR}/libnl-generated/route/cls/ematch_syntax.c
             ${CMAKE_CURRENT_SOURCE_DIR}/libnl-generated/route/cls/ematch_syntax.h
             ${LIBNL_SOURCE_DIR}/lib/route/cls/
