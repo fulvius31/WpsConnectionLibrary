@@ -1,9 +1,6 @@
 jdk:
   - openjdk17
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y -qq flex bison make autoconf automake libtool pkg-config
-  - which flex && which bison && which make || echo "MISSING BUILD TOOLS"
-  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;25.0.8775105"
-  - yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1"
+  - apt-get update -qq || true
+  - apt-get install -y -qq flex bison make || true
+  - which flex && which bison && which make && echo "BUILD TOOLS OK" || echo "MISSING BUILD TOOLS"
