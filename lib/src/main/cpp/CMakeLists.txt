@@ -123,8 +123,10 @@ ExternalProject_Add(libnl_external
     PATCH_COMMAND
         touch ${LIBNL_SOURCE_DIR}/lib/route/pktloc_grammar.c
               ${LIBNL_SOURCE_DIR}/lib/route/pktloc_syntax.c
+              ${LIBNL_SOURCE_DIR}/lib/route/pktloc_syntax.h
               ${LIBNL_SOURCE_DIR}/lib/route/cls/ematch_grammar.c
               ${LIBNL_SOURCE_DIR}/lib/route/cls/ematch_syntax.c
+              ${LIBNL_SOURCE_DIR}/lib/route/cls/ematch_syntax.h
     CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env
             "CC=${NDK_TOOLCHAIN}/bin/${COMPILER_PREFIX}${ANDROID_API_LEVEL}-clang"
