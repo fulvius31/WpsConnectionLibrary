@@ -16,8 +16,7 @@ public class WpsConnectionManagerTest {
   @Test
   public void testManagerRequiresNonNullContext() {
     try {
-      WpsLibConfig config = new WpsLibConfig("/data/data/test/");
-      new WpsConnectionManager(null, config);
+      new WpsConnectionManager(null);
       fail("Should throw when context is null");
     } catch (NullPointerException e) {
       // Expected - context.getApplicationContext() throws NPE

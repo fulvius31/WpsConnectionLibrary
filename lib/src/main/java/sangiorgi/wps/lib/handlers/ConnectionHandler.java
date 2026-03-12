@@ -31,15 +31,12 @@ public class ConnectionHandler {
   private final AtomicInteger currentPinIndex = new AtomicInteger(0);
   private final AtomicInteger timeoutAttempts = new AtomicInteger(0);
 
-  private boolean useOldMethod;
-
   /** Factory interface for creating ConnectionHandler instances. */
   public interface Factory {
     ConnectionHandler create(
         NetworkToTest networkToTest,
         ConnectionUpdateCallback callback,
-        ConnectionStateManager stateManager,
-        boolean useOldMethod);
+        ConnectionStateManager stateManager);
   }
 
   public ConnectionHandler(
@@ -48,15 +45,13 @@ public class ConnectionHandler {
       PinValidationService pinValidator,
       NetworkToTest networkToTest,
       ConnectionUpdateCallback callback,
-      ConnectionStateManager stateManager,
-      boolean useOldMethod) {
+      ConnectionStateManager stateManager) {
     this.context = context;
     this.executor = executor;
     this.pinValidator = pinValidator;
     this.networkToTest = networkToTest;
     this.callback = callback;
     this.stateManager = stateManager;
-    this.useOldMethod = useOldMethod;
   }
 
   /** Start the connection process */
@@ -118,7 +113,7 @@ public class ConnectionHandler {
 
   private void executeWpsConnection(String pin) {
     executor
-        .executeWpsConnection(networkToTest.getBssid(), pin, useOldMethod)
+        .executeWpsConnection(networkToTest.getBssid(), pin)
         .thenAccept(
             result -> {
               if (isCancelled.get()) {
@@ -190,7 +185,6 @@ public class ConnectionHandler {
                 context.getString(R.string.wps_lib_timeout) + " " + pin));
 
     if (attempts > MAX_TIMEOUT_ATTEMPTS) {
-      useOldMethod = true;
       timeoutAttempts.set(0);
     }
 
@@ -203,7 +197,6 @@ public class ConnectionHandler {
     pinValidator.storePinResult(networkToTest.getBssid(), pin, false);
     String message = "PIN " + pin + " - WPS locked or overlap detected";
     runOnUiThread(() -> stateManager.updateProgress(message));
-    useOldMethod = true;
     moveToNextPin();
     processNextPin();
   }

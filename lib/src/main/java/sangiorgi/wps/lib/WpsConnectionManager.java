@@ -30,12 +30,12 @@ import sangiorgi.wps.lib.utils.PinUtils;
  *   manager.testPins("AA:BB:CC:DD:EE:FF", "MyNetwork", pins, callback);
  * </pre>
  */
+@SuppressWarnings("unused") // Public library API - methods are consumed by library users
 public class WpsConnectionManager {
 
   private static final String TAG = "WpsConnectionManager";
 
   private final Context context;
-  private final WpsLibConfig libConfig;
   private final WpsExecutor executor;
   private final PinValidationService pinValidator;
   private final PinDatabaseService pinDatabaseService;
@@ -48,27 +48,24 @@ public class WpsConnectionManager {
    * Create a new WpsConnectionManager.
    *
    * @param context Application context
-   * @param libConfig Library configuration with data directory
    */
-  public WpsConnectionManager(Context context, WpsLibConfig libConfig) {
+  public WpsConnectionManager(Context context) {
     this.context = context.getApplicationContext();
-    this.libConfig = libConfig;
-    this.executor = new WpsExecutor(libConfig);
+    this.executor = new WpsExecutor(this.context);
 
     PinUtils pinUtils = new PinUtils(this.context);
     this.pinValidator = new PinValidationService(pinUtils);
     this.pinDatabaseService = new PinDatabaseService(this.context);
 
     this.connectionHandlerFactory =
-        (networkToTest, callback, stateManager, useOldMethod) ->
+        (networkToTest, callback, stateManager) ->
             new ConnectionHandler(
                 WpsConnectionManager.this.context,
                 executor,
                 pinValidator,
                 networkToTest,
                 callback,
-                stateManager,
-                useOldMethod);
+                stateManager);
 
     this.connectionServiceFactory =
         (networkToTest, callback) ->
@@ -137,7 +134,7 @@ public class WpsConnectionManager {
 
     NetworkToTest network = new NetworkToTest(bssid, ssid, mergedPins);
     activeService = connectionServiceFactory.create(network, callback);
-    return activeService.startConnection(false);
+    return activeService.startConnection();
   }
 
   /**

