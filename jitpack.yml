@@ -1,6 +1,2 @@
 jdk:
   - openjdk17
-before_install:
-  - apt-get update -qq || true
-  - apt-get install -y -qq flex bison make || true
-  - which flex && which bison && which make && echo "BUILD TOOLS OK" || echo "MISSING BUILD TOOLS"

@@ -28,6 +28,15 @@ endif()
 set(NDK_TOOLCHAIN "${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64")
 set(ANDROID_API_LEVEL 23)
 
+# Create dummy flex/bison scripts for CI environments that lack them.
+# The libnl release tarball ships pre-generated .c files so these are never
+# actually invoked — they only satisfy the configure-time check.
+set(DUMMY_TOOLS_DIR "${CMAKE_CURRENT_BINARY_DIR}/dummy-tools")
+file(MAKE_DIRECTORY "${DUMMY_TOOLS_DIR}")
+file(WRITE "${DUMMY_TOOLS_DIR}/flex" "#!/bin/sh\nexit 0\n")
+file(WRITE "${DUMMY_TOOLS_DIR}/bison" "#!/bin/sh\nexit 0\n")
+execute_process(COMMAND chmod +x "${DUMMY_TOOLS_DIR}/flex" "${DUMMY_TOOLS_DIR}/bison")
+
 # Install directories
 set(OPENSSL_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/openssl-install/${ANDROID_ABI}")
 set(LIBNL_INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libnl-install/${ANDROID_ABI}")
@@ -113,6 +122,7 @@ ExternalProject_Add(libnl_external
     INSTALL_DIR "${LIBNL_INSTALL_DIR}"
     CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env
+            "PATH=${DUMMY_TOOLS_DIR}:${NDK_TOOLCHAIN}/bin:$ENV{PATH}"
             "CC=${NDK_TOOLCHAIN}/bin/${COMPILER_PREFIX}${ANDROID_API_LEVEL}-clang"
             "AR=${NDK_TOOLCHAIN}/bin/llvm-ar"
             "RANLIB=${NDK_TOOLCHAIN}/bin/llvm-ranlib"
