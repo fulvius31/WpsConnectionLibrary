@@ -279,9 +279,6 @@ target_include_directories(wpsnative PRIVATE
     ${LIBNL_INSTALL_DIR}/include/libnl3
 )
 
-# Ensure wpsnative waits for external projects to finish
-add_dependencies(wpsnative openssl_external libnl_external hostap_external pixiewps_exec wpa_supplicant_exec)
-
 target_compile_options(wpsnative PRIVATE
     -ffunction-sections
     -fdata-sections
@@ -324,3 +321,6 @@ add_custom_target(wpa_supplicant_exec ALL
     DEPENDS hostap_external
     COMMENT "Copying wpa_supplicant and wpa_cli executables"
 )
+
+# Ensure wpsnative waits for external projects to finish
+add_dependencies(wpsnative openssl_external libnl_external hostap_external pixiewps_exec wpa_supplicant_exec)
