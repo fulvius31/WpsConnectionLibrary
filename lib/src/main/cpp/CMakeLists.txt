@@ -139,7 +139,10 @@ ExternalProject_Add(libnl_external
             --disable-pthreads
             "LEX=${DUMMY_TOOLS_DIR}/flex"
             "YACC=${DUMMY_TOOLS_DIR}/bison"
-    BUILD_COMMAND make -j4
+    BUILD_COMMAND
+        ${CMAKE_COMMAND} -E env
+            "PATH=${DUMMY_TOOLS_DIR}:$ENV{PATH}"
+        make -j4
     INSTALL_COMMAND make install
     BUILD_IN_SOURCE 1
     BUILD_BYPRODUCTS
