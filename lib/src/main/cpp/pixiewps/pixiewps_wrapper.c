@@ -69,32 +69,27 @@ int pixiewps_compute(const char *pke, const char *pkr,
     }
 
     if (pid == 0) {
-        // Child: redirect stdout to pipe and exec pixiewps
+        // Child: redirect stdout to pipe and exec pixiewps via su
+        // Direct execl fails on modern Android (SELinux denies exec from
+        // /data/local/tmp for untrusted_app domain). Running through su
+        // switches to the root/magisk SELinux domain which has exec permission.
         close(pipefd[0]);
         dup2(pipefd[1], STDOUT_FILENO);
         dup2(pipefd[1], STDERR_FILENO);
         close(pipefd[1]);
 
+        char cmd[8192];
         if (force) {
-            execl(pixiewps_exec_path, "pixiewps",
-                  "--force",
-                  "--pke", pke,
-                  "--pkr", pkr,
-                  "--e-hash1", e_hash1,
-                  "--e-hash2", e_hash2,
-                  "--authkey", auth_key,
-                  "--e-nonce", e_nonce,
-                  (char *)NULL);
+            snprintf(cmd, sizeof(cmd),
+                     "%s --force --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s",
+                     pixiewps_exec_path, pke, pkr, e_hash1, e_hash2, auth_key, e_nonce);
         } else {
-            execl(pixiewps_exec_path, "pixiewps",
-                  "--pke", pke,
-                  "--pkr", pkr,
-                  "--e-hash1", e_hash1,
-                  "--e-hash2", e_hash2,
-                  "--authkey", auth_key,
-                  "--e-nonce", e_nonce,
-                  (char *)NULL);
+            snprintf(cmd, sizeof(cmd),
+                     "%s --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s",
+                     pixiewps_exec_path, pke, pkr, e_hash1, e_hash2, auth_key, e_nonce);
         }
+
+        execlp("su", "su", "-c", cmd, (char *)NULL);
         _exit(127);
     }
 
