@@ -244,6 +244,16 @@ ExternalProject_Add(pixiewps_external
     GIT_REPOSITORY "https://github.com/wiire-a/pixiewps.git"
     GIT_TAG "master"
     SOURCE_DIR "${PIXIEWPS_SOURCE_DIR}"
+    PATCH_COMMAND
+        ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/pixiewps/patches/pixiewps.c
+            ${PIXIEWPS_SOURCE_DIR}/src/pixiewps.c
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/pixiewps/patches/pixiewps.h
+            ${PIXIEWPS_SOURCE_DIR}/src/pixiewps.h
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/pixiewps/patches/Makefile
+            ${PIXIEWPS_SOURCE_DIR}/Makefile
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
         ${CMAKE_COMMAND} -E env
