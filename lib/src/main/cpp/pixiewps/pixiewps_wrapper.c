@@ -82,11 +82,11 @@ int pixiewps_compute(const char *pke, const char *pkr,
         char cmd[8192];
         if (force) {
             snprintf(cmd, sizeof(cmd),
-                     "%s --force --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s",
+                     "%s --force --mode 1,2,3,4,5,6,7,8,9,10,11 --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s",
                      pixiewps_exec_path, pke, pkr, e_hash1, e_hash2, auth_key, e_nonce);
         } else {
             snprintf(cmd, sizeof(cmd),
-                     "%s --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s",
+                     "%s --mode 1,2,3,4,5,6,7,8,9,10,11 --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s",
                      pixiewps_exec_path, pke, pkr, e_hash1, e_hash2, auth_key, e_nonce);
         }
 
