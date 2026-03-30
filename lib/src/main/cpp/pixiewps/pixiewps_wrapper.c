@@ -49,8 +49,6 @@ int pixiewps_compute(const char *pke, const char *pkr,
                       const char *auth_key, const char *e_nonce,
                       int force, char *pin_out, int pin_size) {
 
-    (void)force;
-
     if (pixiewps_exec_path[0] == '\0') {
         LOGE("pixiewps_compute: executable path not set");
         return -1;
@@ -82,9 +80,15 @@ int pixiewps_compute(const char *pke, const char *pkr,
         close(pipefd[1]);
 
         char cmd[8192];
-        snprintf(cmd, sizeof(cmd),
-                 "%s --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s --force",
-                 pixiewps_exec_path, pke, pkr, e_hash1, e_hash2, auth_key, e_nonce);
+        if (force) {
+            snprintf(cmd, sizeof(cmd),
+                     "%s --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s --force",
+                     pixiewps_exec_path, pke, pkr, e_hash1, e_hash2, auth_key, e_nonce);
+        } else {
+            snprintf(cmd, sizeof(cmd),
+                     "%s --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s",
+                     pixiewps_exec_path, pke, pkr, e_hash1, e_hash2, auth_key, e_nonce);
+        }
 
         execlp("su", "su", "-c", cmd, (char *)NULL);
         _exit(127);

@@ -263,6 +263,7 @@ void supplicant_read_wps_result(wps_session_t *session, wps_result_t *result, in
         }
 
         strncpy(result->raw_line, line, sizeof(result->raw_line) - 1);
+        result->raw_line[sizeof(result->raw_line) - 1] = '\0';
         append_exchange_line(result, line);
         if (is_wps_exchange_line(line)) {
             LOGD("supplicant: %s", line);

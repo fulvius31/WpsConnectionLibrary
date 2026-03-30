@@ -116,6 +116,18 @@ public class WpsResultTest {
     }
 
     @Test
+    public void testExchangeLog() {
+        WpsResult result = new WpsResult(0, "pass", "raw", "WPS: Enrollee Nonce - hexdump");
+        assertEquals("WPS: Enrollee Nonce - hexdump", result.getExchangeLog());
+    }
+
+    @Test
+    public void testExchangeLogNull() {
+        WpsResult result = new WpsResult(0, "pass", "raw", null);
+        assertNull(result.getExchangeLog());
+    }
+
+    @Test
     public void testToStringNullKey() {
         WpsResult result = new WpsResult(6, null, null, null);
         String str = result.toString();
