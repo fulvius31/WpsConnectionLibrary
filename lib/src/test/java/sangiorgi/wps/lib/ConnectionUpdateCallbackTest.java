@@ -37,6 +37,34 @@ public class ConnectionUpdateCallbackTest {
 
     // Default methods should not throw
     callback.onPixieDustSuccess("12345670", "password");
+    callback.onPixieDustSuccess("12345670", "password", "exchange log");
     callback.onPixieDustFailure("error");
+  }
+
+  @Test
+  public void testThreeArgPixieDustSuccessDelegatesToTwoArg() {
+    final boolean[] called = {false};
+    ConnectionUpdateCallback callback =
+        new ConnectionUpdateCallback() {
+          @Override
+          public void create(String title, String message, int progress) {}
+          @Override
+          public void updateMessage(String message) {}
+          @Override
+          public void updateCount(int increment) {}
+          @Override
+          public void error(String message, int type) {}
+          @Override
+          public void success(NetworkToTest networkToTest, boolean isRoot) {}
+          @Override
+          public void onPixieDustSuccess(String pin, String password) {
+            called[0] = true;
+            assertEquals("12345670", pin);
+            assertEquals("password", password);
+          }
+        };
+
+    callback.onPixieDustSuccess("12345670", "password", "log data");
+    assertTrue("3-arg overload should delegate to 2-arg", called[0]);
   }
 }

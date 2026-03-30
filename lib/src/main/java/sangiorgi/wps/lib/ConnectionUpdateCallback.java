@@ -21,5 +21,9 @@ public interface ConnectionUpdateCallback {
   // Additional callbacks for improved pattern
   default void onPixieDustSuccess(String pin, String password) {}
 
+  default void onPixieDustSuccess(String pin, String password, String wpsExchangeLog) {
+    onPixieDustSuccess(pin, password);
+  }
+
   default void onPixieDustFailure(String error) {}
 }

@@ -171,6 +171,10 @@ public class ConnectionHandler {
       networkToTest.setPassword(password);
       Log.i(TAG, "Password found: " + password);
     }
+    String exchangeLog = result.getExchangeLog();
+    if (exchangeLog != null) {
+      networkToTest.setWpsExchangeLog(exchangeLog);
+    }
     runOnUiThread(() -> stateManager.handleSuccessfulConnection(password));
     stop();
   }

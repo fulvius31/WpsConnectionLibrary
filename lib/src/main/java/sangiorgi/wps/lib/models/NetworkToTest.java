@@ -1,5 +1,7 @@
 package sangiorgi.wps.lib.models;
 
+import androidx.annotation.NonNull;
+
 import java.util.Arrays;
 
 public class NetworkToTest {
@@ -7,6 +9,7 @@ public class NetworkToTest {
   private String ssid;
   private String[] pins;
   private String password;
+  private String wpsExchangeLog;
 
   public NetworkToTest() {}
 
@@ -16,6 +19,7 @@ public class NetworkToTest {
     this.pins = pins;
   }
 
+  @NonNull
   @Override
   public String toString() {
     return "NetworkToTest{"
@@ -60,5 +64,13 @@ public class NetworkToTest {
 
   public void setPins(String[] pins) {
     this.pins = pins;
+  }
+
+  public String getWpsExchangeLog() {
+    return wpsExchangeLog;
+  }
+
+  public void setWpsExchangeLog(String wpsExchangeLog) {
+    this.wpsExchangeLog = wpsExchangeLog;
   }
 }

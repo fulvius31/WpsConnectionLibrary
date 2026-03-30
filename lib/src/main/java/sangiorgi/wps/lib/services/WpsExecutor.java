@@ -189,6 +189,10 @@ public class WpsExecutor implements AutoCloseable {
     if (networkKey != null) {
       result.setPassword(networkKey);
     }
+    String exchangeLog = nativeResult.getExchangeLog();
+    if (exchangeLog != null) {
+      result.setExchangeLog(exchangeLog);
+    }
     return result;
   }
 
@@ -268,6 +272,11 @@ public class WpsExecutor implements AutoCloseable {
 
     if (result.getPassword() != null) {
       wpsResult.setPassword(result.getPassword());
+    }
+
+    // Propagate exchange log from the inner WPS result
+    if (result.getWpsResult() != null && result.getWpsResult().getExchangeLog() != null) {
+      wpsResult.setExchangeLog(result.getWpsResult().getExchangeLog());
     }
 
     return wpsResult;

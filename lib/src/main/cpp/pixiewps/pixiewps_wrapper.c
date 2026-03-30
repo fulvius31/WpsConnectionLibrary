@@ -82,7 +82,7 @@ int pixiewps_compute(const char *pke, const char *pkr,
         char cmd[8192];
         if (force) {
             snprintf(cmd, sizeof(cmd),
-                     "%s --force --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s",
+                     "%s --pke %s --pkr %s --e-hash1 %s --e-hash2 %s --authkey %s --e-nonce %s --force",
                      pixiewps_exec_path, pke, pkr, e_hash1, e_hash2, auth_key, e_nonce);
         } else {
             snprintf(cmd, sizeof(cmd),
@@ -158,7 +158,10 @@ int pixiewps_compute(const char *pke, const char *pkr,
     if (strstr(buf, "not found")) {
         LOGI("pixiewps_compute: PIN not found (not vulnerable)");
     } else {
-        LOGE("pixiewps_compute: unexpected output: %s", buf);
+        // Log end of output (error reason is appended after usage screen)
+        int tail_start = total > 300 ? total - 300 : 0;
+        LOGE("pixiewps_compute: unexpected exit=%d, output tail: %s",
+             WIFEXITED(status) ? WEXITSTATUS(status) : -1, buf + tail_start);
     }
 
     pin_out[0] = '\0';
