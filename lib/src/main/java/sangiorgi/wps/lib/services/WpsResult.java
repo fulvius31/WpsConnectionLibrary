@@ -27,6 +27,7 @@ public class WpsResult {
   private final List<CommandResult> commandResults;
   private final boolean success;
   private String password;
+  private String exchangeLog;
 
   public WpsResult(String bssid, String pin, List<CommandResult> commandResults) {
     this.bssid = bssid;
@@ -230,6 +231,14 @@ public class WpsResult {
 
   public List<CommandResult> getResults() {
     return commandResults;
+  }
+
+  public String getExchangeLog() {
+    return exchangeLog;
+  }
+
+  public void setExchangeLog(String exchangeLog) {
+    this.exchangeLog = exchangeLog;
   }
 
   private String extractPassword() {

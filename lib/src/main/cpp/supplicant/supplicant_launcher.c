@@ -195,6 +195,37 @@ void session_destroy(wps_session_t *session) {
 // =============================================================================
 // supplicant_read_wps_result
 // =============================================================================
+/**
+ * Helper: check if a line is a WPS exchange line worth logging.
+ */
+static int is_wps_exchange_line(const char *line) {
+    if (strstr(line, "hexdump") == NULL) return 0;
+    return strstr(line, "Enrollee Nonce") != NULL
+        || strstr(line, "E-Hash1") != NULL
+        || strstr(line, "E-Hash2") != NULL
+        || strstr(line, "AuthKey") != NULL
+        || strstr(line, "DH own Public Key") != NULL
+        || strstr(line, "DH peer Public Key") != NULL
+        || strstr(line, "Registrar Nonce") != NULL;
+}
+
+/**
+ * Helper: append a line to the exchange log buffer if it's WPS-relevant.
+ */
+static void append_exchange_line(wps_result_t *result, const char *line) {
+    if (!is_wps_exchange_line(line)) return;
+
+    int line_len = strlen(line);
+    int remaining = (int)sizeof(result->exchange_log) - result->exchange_log_len - 2; // room for \n and \0
+    if (remaining <= 0) return;
+
+    int to_copy = line_len < remaining ? line_len : remaining;
+    memcpy(result->exchange_log + result->exchange_log_len, line, to_copy);
+    result->exchange_log_len += to_copy;
+    result->exchange_log[result->exchange_log_len++] = '\n';
+    result->exchange_log[result->exchange_log_len] = '\0';
+}
+
 void supplicant_read_wps_result(wps_session_t *session, wps_result_t *result, int timeout_ms) {
     if (!session || !session->running) {
         result->status = WPS_STATUS_ERROR;
@@ -231,8 +262,11 @@ void supplicant_read_wps_result(wps_session_t *session, wps_result_t *result, in
             return;
         }
 
-        LOGD("supplicant output: %s", line);
         strncpy(result->raw_line, line, sizeof(result->raw_line) - 1);
+        append_exchange_line(result, line);
+        if (is_wps_exchange_line(line)) {
+            LOGD("supplicant: %s", line);
+        }
 
         // Check for SELinux denial
         if (strstr(line, "avc: denied { sendto }") && strstr(line, "permissive=0")) {
@@ -317,8 +351,6 @@ int supplicant_extract_pixiedust(wps_session_t *session, pixiedust_params_t *par
         }
         read_errors = 0; // Reset on successful read
 
-        LOGD("pixie output: %s", line);
-
         // Extract each parameter from hexdump lines
         if (strstr(line, "Enrollee Nonce") && strstr(line, "hexdump")) {
             extract_hexdump(line, params->enrollee_nonce, sizeof(params->enrollee_nonce));
@@ -328,12 +360,12 @@ int supplicant_extract_pixiedust(wps_session_t *session, pixiedust_params_t *par
         else if (strstr(line, "DH own Public Key") && strstr(line, "hexdump")) {
             extract_hexdump(line, params->dh_own_pubkey, sizeof(params->dh_own_pubkey));
             found |= 0x02;
-            LOGD("Found DH own Public Key (PKE)");
+            LOGD("Found DH own Public Key (PKR)");
         }
         else if (strstr(line, "DH peer Public Key") && strstr(line, "hexdump")) {
             extract_hexdump(line, params->dh_peer_pubkey, sizeof(params->dh_peer_pubkey));
             found |= 0x04;
-            LOGD("Found DH peer Public Key (PKR)");
+            LOGD("Found DH peer Public Key (PKE)");
         }
         else if (strstr(line, "AuthKey") && strstr(line, "hexdump")) {
             extract_hexdump(line, params->auth_key, sizeof(params->auth_key));

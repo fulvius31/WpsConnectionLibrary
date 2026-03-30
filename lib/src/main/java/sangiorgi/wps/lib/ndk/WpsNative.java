@@ -115,18 +115,21 @@ public class WpsNative {
         Shell.Result result = Shell.cmd(cpCmds.toString()).exec();
         List<String> output = result.getOut();
 
-        boolean hasSupplicant = false;
+        int foundCount = 0;
         for (String line : output) {
             Log.i(TAG, "deploy: " + line);
-            if (line.contains("libwpa_supplicant_exec.so") && !line.contains("No such file")) {
-                hasSupplicant = true;
+            for (String name : EXECUTABLES) {
+                if (line.contains(name) && !line.contains("No such file")) {
+                    foundCount++;
+                }
             }
         }
 
-        if (hasSupplicant) {
-            Log.i(TAG, "deployExecutables: success via cp from nativeLibDir");
+        if (foundCount >= EXECUTABLES.length) {
+            Log.i(TAG, "deployExecutables: all " + foundCount + " executables deployed");
             return true;
         }
+        Log.w(TAG, "deployExecutables: only " + foundCount + "/" + EXECUTABLES.length + " found");
 
         Log.w(TAG, "deployExecutables: cp failed, trying stdin pipe fallback");
         return deployViaStdinPipe();

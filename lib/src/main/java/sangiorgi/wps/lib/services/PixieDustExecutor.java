@@ -85,7 +85,7 @@ public class PixieDustExecutor {
                 params[5], // eHash2
                 params[3], // authKey
                 params[0], // eNonce (Enrollee Nonce)
-                true       // --force
+                false      // no --force: auto mode is fast (~seconds)
             );
 
             if (pin == null) {

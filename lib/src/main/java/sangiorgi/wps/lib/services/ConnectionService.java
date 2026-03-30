@@ -88,6 +88,9 @@ public class ConnectionService {
                       if (password != null) {
                         networkToTest.setPassword(password);
                       }
+                      if (result.getExchangeLog() != null) {
+                        networkToTest.setWpsExchangeLog(result.getExchangeLog());
+                      }
                       stateManager.handleSuccessfulConnection(password);
                     } else {
                       stateManager.handleFailedConnection("Belkin connection failed", -1);
@@ -137,6 +140,9 @@ public class ConnectionService {
                 if (password != null) {
                   networkToTest.setPassword(password);
                 }
+                if (result.getExchangeLog() != null) {
+                  networkToTest.setWpsExchangeLog(result.getExchangeLog());
+                }
                 stateManager.handleSuccessfulConnection(password);
                 return;
               }
@@ -172,8 +178,12 @@ public class ConnectionService {
                   if (password != null) {
                     networkToTest.setPassword(password);
                   }
+                  String exchangeLog = result.getExchangeLog();
+                  if (exchangeLog != null) {
+                    networkToTest.setWpsExchangeLog(exchangeLog);
+                  }
                   // Report success with PIN and password (password may be null)
-                  callback.onPixieDustSuccess(pin, password);
+                  callback.onPixieDustSuccess(pin, password, exchangeLog);
                 } else {
                   // No PIN found
                   callback.onPixieDustFailure("PIN not found. Router may not be vulnerable.");

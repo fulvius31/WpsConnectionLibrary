@@ -31,13 +31,15 @@ typedef struct {
     int status;
     char network_key[256];  // Password on success
     char raw_line[1024];    // Raw output line for debugging
+    char exchange_log[65536]; // Accumulated WPS exchange lines
+    int exchange_log_len;     // Current length of exchange_log
 } wps_result_t;
 
 // Pixie Dust parameters
 typedef struct {
     char enrollee_nonce[128];
-    char dh_own_pubkey[1024];   // PKE
-    char dh_peer_pubkey[1024];  // PKR
+    char dh_own_pubkey[1024];   // PKR (our key as External Registrar)
+    char dh_peer_pubkey[1024];  // PKE (AP's key as Enrollee)
     char auth_key[128];
     char e_hash1[128];
     char e_hash2[128];

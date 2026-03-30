@@ -34,17 +34,20 @@ public class WpsResult {
     private final Status status;
     private final String networkKey;
     private final String rawLine;
+    private final String exchangeLog;
 
     /**
      * Constructor called from native code.
-     * @param statusCode Native status code (0-7)
-     * @param networkKey WiFi password on success, null otherwise
-     * @param rawLine    Raw output line for debugging
+     * @param statusCode  Native status code (0-7)
+     * @param networkKey  WiFi password on success, null otherwise
+     * @param rawLine     Raw output line for debugging
+     * @param exchangeLog Accumulated WPS exchange lines from supplicant
      */
-    public WpsResult(int statusCode, String networkKey, String rawLine) {
+    public WpsResult(int statusCode, String networkKey, String rawLine, String exchangeLog) {
         this.status = Status.fromCode(statusCode);
         this.networkKey = networkKey;
         this.rawLine = rawLine;
+        this.exchangeLog = exchangeLog;
     }
 
     public Status getStatus() {
@@ -57,6 +60,10 @@ public class WpsResult {
 
     public String getRawLine() {
         return rawLine;
+    }
+
+    public String getExchangeLog() {
+        return exchangeLog;
     }
 
     public boolean isSuccess() {

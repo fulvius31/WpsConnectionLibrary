@@ -128,7 +128,8 @@ Java_sangiorgi_wps_lib_ndk_WpsNative_readWpsResult(
         return NULL;
     }
 
-    jmethodID ctor = (*env)->GetMethodID(env, cls, "<init>", "(ILjava/lang/String;Ljava/lang/String;)V");
+    jmethodID ctor = (*env)->GetMethodID(env, cls, "<init>",
+        "(ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
     if (ctor == NULL) {
         LOGE("readWpsResult: WpsResult constructor not found");
         return NULL;
@@ -136,8 +137,9 @@ Java_sangiorgi_wps_lib_ndk_WpsNative_readWpsResult(
 
     jstring jKey = result.network_key[0] ? (*env)->NewStringUTF(env, result.network_key) : NULL;
     jstring jRaw = result.raw_line[0] ? (*env)->NewStringUTF(env, result.raw_line) : NULL;
+    jstring jLog = result.exchange_log[0] ? (*env)->NewStringUTF(env, result.exchange_log) : NULL;
 
-    return (*env)->NewObject(env, cls, ctor, result.status, jKey, jRaw);
+    return (*env)->NewObject(env, cls, ctor, result.status, jKey, jRaw, jLog);
 }
 
 // =============================================================================
