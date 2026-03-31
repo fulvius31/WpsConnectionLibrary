@@ -182,7 +182,10 @@ Data model passed to the `success` callback.
 | `ssid` | `String` | Name of the target network |
 | `pins` | `String[]` | PINs that were tested |
 | `password` | `String` | WiFi password extracted on success |
-| `wpsExchangeLog` | `String` | WPS handshake log (available for Pixie Dust results) |
+| `wpsExchangeLog` | `String` | WPS exchange log captured from attack output |
+
+`NetworkToTest.wpsExchangeLog` is `null` when no exchange-log output is available in the underlying WPS result.
+For Pixie Dust callbacks, the `wpsExchangeLog` parameter passed to `onPixieDustSuccess(pin, password, wpsExchangeLog)` uses the same value and is also `null` in that case.
 
 ## Usage Examples
 
@@ -332,6 +335,7 @@ The library automatically selects the WPS method based on Android API level:
 Architecture (32-bit vs 64-bit) is detected automatically and the correct binaries are used.
 
 **Supported Architectures:** `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+`x86` (32-bit Intel) is intentionally not included in current ABI filters; 32-bit support is ARM-only (`armeabi-v7a`), while 64-bit supports `arm64-v8a` and `x86_64`.
 
 ### Required Assets
 
