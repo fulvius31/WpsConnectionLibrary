@@ -59,9 +59,8 @@ dependencies {
 ## Quick Start
 
 ```java
-// 1. Create configuration and manager
-WpsLibConfig config = new WpsLibConfig(context.getDataDir().getAbsolutePath());
-WpsConnectionManager manager = new WpsConnectionManager(context, config);
+// 1. Create manager
+WpsConnectionManager manager = new WpsConnectionManager(context);
 
 // 2. Initialize (extracts assets from APK to app files dir — call once)
 manager.initialize();
@@ -83,7 +82,7 @@ manager.shutdown();  // Full shutdown (release thread pool)
 The main entry point. Create once as a singleton and reuse across connections.
 
 ```java
-WpsConnectionManager(Context context, WpsLibConfig config)
+WpsConnectionManager(Context context)
 ```
 
 #### Initialization
@@ -133,20 +132,6 @@ The `pin.db` SQLite database has a single table:
 | `void cleanup()` | Stop the active operation without killing processes. |
 | `void shutdown()` | Full shutdown — cleanup and close the executor thread pool. Call only when the manager is no longer needed. |
 
-### WpsLibConfig
-
-Configuration holder for the library.
-
-```java
-WpsLibConfig config = new WpsLibConfig("/data/data/com.example.app/");
-
-config.getDataDir();     // "/data/data/com.example.app/"
-config.getFilesDir();    // "/data/data/com.example.app/files"
-config.getSessionsDir(); // "/data/data/com.example.app/Sessions"
-```
-
-The `dataDir` path is where binaries are extracted and session state is stored. A trailing slash is added automatically if missing.
-
 ### ConnectionUpdateCallback
 
 Implement this interface to receive real-time progress updates.
@@ -177,6 +162,11 @@ public interface ConnectionUpdateCallback {
     // Pixie Dust specific — called when the attack discovers a PIN
     default void onPixieDustSuccess(String pin, String password) {}
 
+    // Pixie Dust specific — includes full WPS exchange log (hexdump lines)
+    default void onPixieDustSuccess(String pin, String password, String wpsExchangeLog) {
+        onPixieDustSuccess(pin, password);
+    }
+
     // Pixie Dust specific — called when the attack fails
     default void onPixieDustFailure(String error) {}
 }
@@ -192,6 +182,7 @@ Data model passed to the `success` callback.
 | `ssid` | `String` | Name of the target network |
 | `pins` | `String[]` | PINs that were tested |
 | `password` | `String` | WiFi password extracted on success |
+| `wpsExchangeLog` | `String` | WPS handshake log (available for Pixie Dust results) |
 
 ## Usage Examples
 
@@ -275,7 +266,7 @@ object WpsModule {
     fun provideWpsConnectionManager(
         @ApplicationContext context: Context,
     ): WpsConnectionManager {
-        return WpsConnectionManager(context, WpsLibConfig(context.dataDir.absolutePath))
+        return WpsConnectionManager(context)
     }
 }
 
@@ -340,32 +331,18 @@ The library automatically selects the WPS method based on Android API level:
 
 Architecture (32-bit vs 64-bit) is detected automatically and the correct binaries are used.
 
+**Supported Architectures:** `armeabi-v7a`, `arm64-v8a`, `x86_64`.
+
 ### Required Assets
 
-The library does **not** bundle native binaries itself. The consuming app must include the following files in its `src/main/assets/` directory. At initialization, the library extracts them from the APK to the app's files directory using `context.getAssets()`.
-
-Both 64-bit and 32-bit variants must be provided (32-bit files use a `-32` suffix):
+With the NDK migration, executables and shared libraries are bundled as native libraries in the library APK.  
+The consuming app only needs to include:
 
 | Asset | Target name | Purpose |
 |-------|-------------|---------|
-| `wpa_cli` / `wpa_cli-32` | `wpa_cli_n` | WPA command-line client |
-| `wpa_supplicant` / `wpa_supplicant-32` | `wpa_supplicant` | WPA authentication daemon |
-| `pixiedust` / `pixiedust-32` | `pixiedust` | Pixie Dust attack tool |
-| `iw` / `iw-32` | `iw` | Wireless interface utility |
-| `wpa_supplicant.conf` | `wpa_supplicant.conf` | WPA supplicant configuration |
 | `pin.db` | `pin.db` | SQLite database of known default PINs |
 
-Required shared libraries (architecture-dependent):
-
-| 64-bit | 32-bit | Purpose |
-|--------|--------|---------|
-| `libssl.so.3` | `libssl.so.1.1` | OpenSSL TLS library |
-| `libcrypto.so.3` | `libcrypto.so.1.1` | OpenSSL cryptography library |
-| `libnl-3.so` | `libnl-3.so-32` | Netlink protocol library |
-| `libnl-genl-3.so` | `libnl-genl-3.so-32` | Netlink generic protocol |
-| `libnl-route-3.so` | — | Netlink routing (64-bit only) |
-
-The library detects the device architecture at runtime and loads the correct variant.
+At initialization, `pin.db` is extracted from `assets/` to the app files directory.
 
 ## Building from Source
 
